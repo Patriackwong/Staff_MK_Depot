@@ -42,7 +42,7 @@
       .then((profile) => {
         window.location.replace(
           `
-https://docs.google.com/forms/d/e/1FAIpQLScIpkUqvEeN03t8HCs4PL3aF3hSh03BikngvI6B2rujvjlTjA/viewform?usp=pp_url&entry.2=${profile.userId}
+https://docs.google.com/forms/d/e/1FAIpQLSfT30Z6B_H3-2Quzdgs2ZZJu4EBclkyetZDyw3ul0fpfXoIyg/viewform?usp=pp_url&entry.280199702=${profile.userId}
 `
         );
       });
