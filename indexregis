@@ -27,7 +27,7 @@
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
 
-    const liffId = "ใส่ตรงนี้";  //เปลี่ยนเป็น liffId ของที่สร้าง
+    const liffId = "ใส่ตรงนี้Fvg8";  //เปลี่ยนเป็น liffId ของที่สร้าง
 
     liff.ready
       .then(() => {
