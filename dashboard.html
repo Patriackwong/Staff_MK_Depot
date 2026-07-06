@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>คลังแม่กลอง — ใครอยู่ในคลังตอนนี้</title>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      font-family: 'Prompt', sans-serif;
+      background: #F4FBF6;
+      color: #263238;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+    .wrap { max-width: 640px; margin: 0 auto; }
+    header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    h1 { font-size: 20px; font-weight: 600; color: #2E7D32; }
+    .live {
+      font-size: 12px; font-weight: 600; color: #2E7D32;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #4CAF50; animation: pulse 1.6s infinite; }
+    @keyframes pulse { 50% { opacity: .3; } }
+    .admin-name { font-size: 12px; color: #78909C; width: 100%; }
+
+    .count-card {
+      background: #fff; border-radius: 20px; padding: 28px;
+      box-shadow: 0 4px 14px rgba(46,125,50,.10);
+      margin: 20px 0; text-align: center;
+    }
+    .count { font-size: 64px; font-weight: 600; color: #2E7D32; line-height: 1.1; }
+    .count-label { font-size: 15px; color: #607D8B; }
+
+    ul { list-style: none; }
+    li {
+      background: #fff; border-radius: 14px; padding: 14px 18px;
+      margin-bottom: 10px; display: flex; align-items: center; gap: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.05);
+    }
+    .avatar {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: #C8E6C9; color: #2E7D32;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 18px; flex-shrink: 0;
+    }
+    .info { flex: 1; min-width: 0; }
+    .name { font-weight: 600; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .code { font-weight: 300; color: #90A4AE; font-size: 13px; }
+    .since { font-size: 13px; color: #78909C; }
+    .dur { font-size: 14px; font-weight: 600; color: #2E7D32; white-space: nowrap; }
+    .dur.long { color: #E65100; }
+    li.overdue { border: 1px solid #FFCC80; background: #FFF8F0; }
+    .badge {
+      font-size: 11px; font-weight: 600; color: #E65100;
+      background: #FFE0B2; border-radius: 8px; padding: 2px 8px; margin-left: 6px;
+    }
+    .empty, .panel {
+      text-align: center; color: #607D8B; padding: 32px 20px; font-size: 15px;
+      background: #fff; border-radius: 14px; margin-top: 20px;
+    }
+    .panel h2 { font-size: 17px; color: #D32F2F; margin-bottom: 8px; font-weight: 600; }
+    .uid {
+      display: inline-block; margin-top: 10px; padding: 8px 12px;
+      background: #ECEFF1; border-radius: 8px;
+      font-family: monospace; font-size: 13px; word-break: break-all;
+      user-select: all;
+    }
+    .panel small { display: block; margin-top: 10px; color: #90A4AE; }
+    footer { margin-top: 20px; font-size: 12px; color: #90A4AE; text-align: center; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>คลังแม่กลอง — อยู่ในคลังตอนนี้</h1>
+      <span class="live"><span class="dot"></span>อัปเดตอัตโนมัติ</span>
+      <span class="admin-name" id="adminName"></span>
+    </header>
+
+    <div id="loadingPanel" class="panel">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div id="deniedPanel" class="panel hidden">
+      <h2>บัญชีนี้ไม่มีสิทธิ์เข้าถึงแดชบอร์ด</h2>
+      หากคุณควรมีสิทธิ์ ให้ส่งรหัสด้านล่างให้ผู้ดูแลระบบเพื่อเพิ่มเป็นแอดมิน
+      <div class="uid" id="myUid"></div>
+      <small>แตะค้างที่รหัสเพื่อคัดลอก</small>
+    </div>
+
+    <div id="main" class="hidden">
+      <div class="count-card">
+        <div class="count" id="count">–</div>
+        <div class="count-label">คนที่เช็คอินแล้วยังไม่เช็คเอาท์</div>
+      </div>
+      <ul id="list"></ul>
+      <footer id="updated"></footer>
+    </div>
+  </div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
+  <script>
+    // ===================== ตั้งค่า =====================
+    const LIFF_ID  = 'XXXXXXXXXX-XXXXXXXX'; // 🔧 LIFF ตัวใหม่สำหรับ dashboard (สร้างใน channel เดิม)
+    const FUNC_URL = 'https://YOUR-PROJECT-REF.supabase.co/functions/v1/dashboard'; // 🔧 แก้เป็นของคุณ
+    const REFRESH_SECONDS = 20;   // ดึงข้อมูลใหม่ทุกกี่วินาที
+    const OVERDUE_HOURS   = 14;   // เกินกี่ชั่วโมงถือว่า "อาจลืมเช็คเอาท์"
+    // ===================================================
+
+    const $ = (id) => document.getElementById(id);
+    let rows = [];
+    let timer = null;
+
+    const fmtTime = (iso) => new Date(iso).toLocaleString('th-TH', {
+      timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short'
+    });
+
+    function durText(iso) {
+      const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+      const h = Math.floor(mins / 60), m = mins % 60;
+      return h > 0 ? `${h} ชม. ${m} น.` : `${m} นาที`;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      })[c]);
+    }
+
+    async function start() {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) {
+          liff.login({ redirectUri: location.href });
+          return;
+        }
+        await load();
+        timer = setInterval(load, REFRESH_SECONDS * 1000);
+        setInterval(render, 60000); // ให้ตัวเลขระยะเวลาเดินทุกนาที
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') load();
+        });
+      } catch (err) {
+        $('loadingPanel').textContent = 'เริ่มระบบไม่สำเร็จ: ' + err.message;
+      }
+    }
+
+    async function load() {
+      try {
+        const res = await fetch(FUNC_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessToken: liff.getAccessToken() })
+        });
+        const data = await res.json();
+
+        if (!data.ok) {
+          if (timer) clearInterval(timer);
+          $('loadingPanel').classList.add('hidden');
+          $('main').classList.add('hidden');
+          if (data.code === 'not_admin') {
+            $('myUid').textContent = data.userId;
+            $('deniedPanel').classList.remove('hidden');
+          } else {
+            $('loadingPanel').classList.remove('hidden');
+            $('loadingPanel').textContent = data.desc || 'เกิดข้อผิดพลาด';
+          }
+          return;
+        }
+
+        rows = data.rows || [];
+        $('adminName').textContent = data.adminName ? 'ล็อกอินโดย ' + data.adminName : '';
+        $('loadingPanel').classList.add('hidden');
+        $('deniedPanel').classList.add('hidden');
+        $('main').classList.remove('hidden');
+        render();
+      } catch (err) {
+        $('updated').textContent = 'โหลดข้อมูลไม่สำเร็จ จะลองใหม่อัตโนมัติ';
+      }
+    }
+
+    function render() {
+      if ($('main').classList.contains('hidden')) return;
+      $('count').textContent = rows.length;
+      const list = $('list');
+      list.innerHTML = '';
+      if (rows.length === 0) {
+        list.innerHTML = '<li class="empty">ไม่มีพนักงานอยู่ในคลังขณะนี้</li>';
+      }
+      for (const r of rows) {
+        const hrs = (Date.now() - new Date(r.check_in).getTime()) / 3600000;
+        const overdue = hrs >= OVERDUE_HOURS;
+        const li = document.createElement('li');
+        if (overdue) li.className = 'overdue';
+        const name = r.display_name || r.line_user_id;
+        li.innerHTML = `
+          <div class="avatar">${escapeHtml(name.trim().charAt(0))}</div>
+          <div class="info">
+            <div class="name">${escapeHtml(name)}
+              ${r.employee_code ? `<span class="code">(${escapeHtml(r.employee_code)})</span>` : ''}
+              ${overdue ? '<span class="badge">อาจลืมเช็คเอาท์</span>' : ''}</div>
+            <div class="since">เข้างาน ${fmtTime(r.check_in)}</div>
+          </div>
+          <div class="dur ${overdue ? 'long' : ''}">${durText(r.check_in)}</div>`;
+        list.appendChild(li);
+      }
+      $('updated').textContent = 'อัปเดตล่าสุด ' +
+        new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' });
+    }
+
+    start();
+  </script>
+</body>
+</html>

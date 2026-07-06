@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>คลังแม่กลอง — รายงานและตั้งค่า</title>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      font-family: 'Prompt', sans-serif;
+      background: #F4FBF6; color: #263238;
+      min-height: 100vh; padding: 24px 12px 48px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 20px; font-weight: 600; color: #2E7D32; }
+    .admin-name { font-size: 12px; color: #78909C; margin-top: 2px; }
+
+    .tabs { display: flex; gap: 8px; margin: 16px 0; }
+    .tab {
+      border: none; border-radius: 50px; padding: 8px 20px;
+      font-family: inherit; font-size: 15px; font-weight: 600;
+      background: #E0EEE4; color: #558B60; cursor: pointer;
+    }
+    .tab.active { background: #4CAF50; color: #fff; }
+
+    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+    input[type="month"], input[type="text"], input[type="number"], input[type="time"] {
+      font-family: inherit; font-size: 15px; padding: 8px 12px;
+      border: 1px solid #C8E6C9; border-radius: 10px; background: #fff;
+    }
+    .stat-row { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+    .stat {
+      flex: 1; min-width: 130px; background: #fff; border-radius: 14px;
+      padding: 14px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,.05);
+    }
+    .stat .v { font-size: 26px; font-weight: 600; color: #2E7D32; }
+    .stat .l { font-size: 12px; color: #78909C; }
+
+    .card {
+      background: #fff; border-radius: 14px; padding: 4px 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,.05); overflow: hidden;
+    }
+    details { border-bottom: 1px solid #F1F8F2; }
+    details:last-child { border-bottom: none; }
+    summary {
+      list-style: none; cursor: pointer;
+      display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    }
+    summary::-webkit-details-marker { display: none; }
+    .rank {
+      width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 15px; background: #ECEFF1; color: #607D8B;
+    }
+    .rank.r1 { background: #FFD54F; color: #6D4C00; }
+    .rank.r2 { background: #CFD8DC; color: #455A64; }
+    .rank.r3 { background: #FFAB91; color: #8D3B12; }
+    .who { flex: 1; min-width: 0; }
+    .who .nm { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .who .cd { font-weight: 300; font-size: 12px; color: #90A4AE; }
+    .nums { text-align: right; white-space: nowrap; }
+    .nums .d { font-weight: 600; color: #2E7D32; font-size: 15px; }
+    .nums .h { font-size: 12px; color: #78909C; }
+    .flag { font-size: 11px; color: #E65100; }
+
+    .daylist { padding: 0 16px 12px 62px; font-size: 13px; }
+    .dayrow {
+      display: flex; gap: 10px; padding: 5px 0;
+      border-top: 1px dashed #ECEFF1; flex-wrap: wrap;
+    }
+    .dayrow .dt { width: 92px; color: #546E7A; }
+    .dayrow .tm { color: #263238; }
+    .dayrow .hh { margin-left: auto; font-weight: 600; color: #2E7D32; }
+    .rmk {
+      font-size: 11px; font-weight: 600; color: #E65100;
+      background: #FFE0B2; border-radius: 8px; padding: 1px 8px;
+    }
+    .rmk.working { color: #1565C0; background: #BBDEFB; }
+
+    .panel {
+      text-align: center; color: #607D8B; padding: 32px 20px; font-size: 15px;
+      background: #fff; border-radius: 14px; margin-top: 20px;
+    }
+    .panel h2 { font-size: 17px; color: #D32F2F; margin-bottom: 8px; font-weight: 600; }
+    .uid {
+      display: inline-block; margin-top: 10px; padding: 8px 12px;
+      background: #ECEFF1; border-radius: 8px;
+      font-family: monospace; font-size: 13px; word-break: break-all; user-select: all;
+    }
+
+    .form { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,.05); }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 13px; color: #546E7A; margin-bottom: 4px; }
+    .field input { width: 100%; }
+    .row2 { display: flex; gap: 12px; }
+    .row2 .field { flex: 1; }
+    .btn {
+      border: none; border-radius: 50px; padding: 12px 26px;
+      font-family: inherit; font-size: 16px; font-weight: 600;
+      color: #fff; background: #4CAF50; cursor: pointer;
+    }
+    .btn.ghost { background: #fff; color: #2E7D32; border: 1px solid #A5D6A7; }
+    .btn:disabled { opacity: .6; }
+    .savemsg { margin-top: 10px; font-size: 13px; color: #2E7D32; min-height: 18px; }
+    .note { font-size: 12px; color: #90A4AE; margin-top: 12px; line-height: 1.6; }
+    .hidden { display: none; }
+    footer { margin-top: 18px; font-size: 12px; color: #90A4AE; text-align: center; }
+    footer a { color: #2E7D32; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>รายงานการทำงาน — คลังแม่กลอง</h1>
+    <div class="admin-name" id="adminName"></div>
+
+    <div id="loadingPanel" class="panel">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div id="deniedPanel" class="panel hidden">
+      <h2>บัญชีนี้ไม่มีสิทธิ์เข้าถึงหน้านี้</h2>
+      หากคุณควรมีสิทธิ์ ให้ส่งรหัสด้านล่างให้ผู้ดูแลระบบ
+      <div class="uid" id="myUid"></div>
+    </div>
+
+    <div id="main" class="hidden">
+      <div class="tabs">
+        <button class="tab active" id="tabReport" onclick="showTab('report')">รายงาน</button>
+        <button class="tab" id="tabSettings" onclick="showTab('settings')">ตั้งค่า</button>
+      </div>
+
+      <!-- ==================== รายงาน ==================== -->
+      <div id="secReport">
+        <div class="toolbar">
+          <label for="month" style="font-size:14px;color:#546E7A">เดือน</label>
+          <input type="month" id="month">
+          <button class="btn ghost" onclick="loadReport()">ดูรายงาน</button>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat"><div class="v" id="stPeople">–</div><div class="l">พนักงานที่มาทำงาน</div></div>
+          <div class="stat"><div class="v" id="stHours">–</div><div class="l">ชั่วโมงรวมทั้งคลัง</div></div>
+          <div class="stat"><div class="v" id="stForgot">–</div><div class="l">ครั้งที่ลืมเช็คอิน/เอาท์</div></div>
+        </div>
+
+        <div class="card" id="rankList"></div>
+        <footer>
+          เรียงตามจำนวนวันที่มาทำงาน · แตะชื่อเพื่อดูรายวัน ·
+          วันที่ไม่มีข้อมูล = วันหยุด · <a href="dashboard.html">ดูคนในคลังตอนนี้</a>
+        </footer>
+      </div>
+
+      <!-- ==================== ตั้งค่า ==================== -->
+      <div id="secSettings" class="hidden">
+        <div class="form">
+          <div class="row2">
+            <div class="field">
+              <label>ละติจูดจุดเช็คอิน (lat)</label>
+              <input type="text" id="fLat" inputmode="decimal">
+            </div>
+            <div class="field">
+              <label>ลองจิจูดจุดเช็คอิน (lng)</label>
+              <input type="text" id="fLng" inputmode="decimal">
+            </div>
+          </div>
+          <div class="field" style="margin-top:-4px">
+            <button class="btn ghost" onclick="useHere()" style="font-size:14px;padding:8px 18px">📍 ใช้ตำแหน่งที่ฉันยืนอยู่ตอนนี้</button>
+          </div>
+          <div class="field">
+            <label>รัศมีที่อนุญาตให้เช็คอิน (เมตร) — ใส่ 0 เพื่อปิดการตรวจระยะ</label>
+            <input type="number" id="fRadius" min="0">
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label>เวลาเข้างาน (เติมให้คนลืมเช็คอิน)</label>
+              <input type="time" id="fStart">
+            </div>
+            <div class="field">
+              <label>เวลาเลิกงาน (เติมให้คนลืมเช็คเอาท์)</label>
+              <input type="time" id="fEnd">
+            </div>
+          </div>
+          <button class="btn" id="btnSave" onclick="saveSettings()">บันทึกการตั้งค่า</button>
+          <div class="savemsg" id="saveMsg"></div>
+          <div class="note">
+            ค่าที่บันทึกมีผลกับการเช็คอินครั้งถัดไปทันที ไม่ต้อง deploy ใหม่<br>
+            วิธีหาพิกัดจากแผนที่: เปิด Google Maps > คลิกขวาที่ตัวคลัง > ตัวเลขบรรทัดแรกคือ lat, lng
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
+  <script>
+    // ===================== ตั้งค่า =====================
+    const LIFF_ID  = 'XXXXXXXXXX-XXXXXXXX'; // 🔧 LIFF สำหรับหน้า admin (สร้างใน channel เดิม)
+    const FUNC_URL = 'https://YOUR-PROJECT-REF.supabase.co/functions/v1/dashboard'; // 🔧 แก้เป็นของคุณ
+    // ===================================================
+
+    const $ = (id) => document.getElementById(id);
+    const bkkDate = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+    const fmtD = (iso) => new Date(iso).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short' });
+    const fmtT = (iso) => new Date(iso).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' });
+    const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+
+    async function api(payload) {
+      const res = await fetch(FUNC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: liff.getAccessToken(), ...payload })
+      });
+      return res.json();
+    }
+
+    function showTab(t) {
+      $('tabReport').classList.toggle('active', t === 'report');
+      $('tabSettings').classList.toggle('active', t === 'settings');
+      $('secReport').classList.toggle('hidden', t !== 'report');
+      $('secSettings').classList.toggle('hidden', t !== 'settings');
+    }
+
+    async function start() {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+
+        const now = new Date();
+        $('month').value = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }).slice(0, 7);
+
+        const ok = await loadReport();       // โหลดรายงาน = ตรวจสิทธิ์ไปในตัว
+        if (ok) loadSettings();
+      } catch (err) {
+        $('loadingPanel').textContent = 'เริ่มระบบไม่สำเร็จ: ' + err.message;
+      }
+    }
+
+    // ---------------- รายงาน ----------------
+    async function loadReport() {
+      const m = $('month').value;             // "YYYY-MM"
+      if (!m) return false;
+      const [y, mo] = m.split('-').map(Number);
+      const from = `${m}-01`;
+      const to = `${m}-${String(new Date(y, mo, 0).getDate()).padStart(2, '0')}`;
+
+      const data = await api({ action: 'report', from, to });
+
+      if (!data.ok) {
+        $('main').classList.add('hidden');
+        $('loadingPanel').classList.add('hidden');
+        if (data.code === 'not_admin') {
+          $('myUid').textContent = data.userId;
+          $('deniedPanel').classList.remove('hidden');
+        } else {
+          $('loadingPanel').classList.remove('hidden');
+          $('loadingPanel').textContent = data.desc || 'เกิดข้อผิดพลาด';
+        }
+        return false;
+      }
+
+      $('adminName').textContent = data.adminName ? 'ล็อกอินโดย ' + data.adminName : '';
+      $('loadingPanel').classList.add('hidden');
+      $('deniedPanel').classList.add('hidden');
+      $('main').classList.remove('hidden');
+      render(data.rows || []);
+      return true;
+    }
+
+    function render(rows) {
+      const byEmp = new Map();
+      let totalHours = 0, totalForgot = 0;
+
+      for (const r of rows) {
+        const e = r.employees || {};
+        const key = r.line_user_id;
+        if (!byEmp.has(key)) {
+          byEmp.set(key, {
+            name: e.full_name || e.display_name || key,
+            code: e.employee_code || '',
+            dates: new Set(), hours: 0, forgot: 0, days: []
+          });
+        }
+        const emp = byEmp.get(key);
+        const working = !r.check_out;
+        const end = r.check_out ? new Date(r.check_out) : new Date();
+        const hrs = Math.max(0, (end - new Date(r.check_in)) / 3600000);
+
+        emp.dates.add(bkkDate(r.check_in));
+        emp.hours += hrs;
+        totalHours += hrs;
+        if (r.remark) { emp.forgot++; totalForgot++; }
+
+        emp.days.push({
+          date: r.check_in,
+          in: fmtT(r.check_in),
+          out: r.check_out ? fmtT(r.check_out) : null,
+          hrs, remark: r.remark, working
+        });
+      }
+
+      const list = [...byEmp.values()]
+        .sort((a, b) => b.dates.size - a.dates.size || b.hours - a.hours);
+
+      $('stPeople').textContent = list.length;
+      $('stHours').textContent = totalHours.toFixed(0);
+      $('stForgot').textContent = totalForgot;
+
+      const box = $('rankList');
+      box.innerHTML = '';
+      if (list.length === 0) {
+        box.innerHTML = '<div style="padding:28px;text-align:center;color:#90A4AE">ไม่มีข้อมูลในเดือนนี้</div>';
+        return;
+      }
+
+      list.forEach((emp, i) => {
+        const rank = i + 1;
+        const d = document.createElement('details');
+        const dayRows = emp.days.map(dd => `
+          <div class="dayrow">
+            <span class="dt">${fmtD(dd.date)}</span>
+            <span class="tm">${dd.in} – ${dd.out ?? '…'}</span>
+            ${dd.working ? '<span class="rmk working">กำลังทำงาน</span>' : ''}
+            ${dd.remark ? `<span class="rmk">${esc(dd.remark)}</span>` : ''}
+            <span class="hh">${dd.hrs.toFixed(1)} ชม.</span>
+          </div>`).join('');
+
+        d.innerHTML = `
+          <summary>
+            <div class="rank ${rank <= 3 ? 'r' + rank : ''}">${rank}</div>
+            <div class="who">
+              <div class="nm">${esc(emp.name)}</div>
+              <div class="cd">${esc(emp.code)}
+                ${emp.forgot ? `<span class="flag">· ลืมเช็ค ${emp.forgot} ครั้ง</span>` : ''}</div>
+            </div>
+            <div class="nums">
+              <div class="d">${emp.dates.size} วัน</div>
+              <div class="h">${emp.hours.toFixed(1)} ชม.</div>
+            </div>
+          </summary>
+          <div class="daylist">${dayRows}</div>`;
+        box.appendChild(d);
+      });
+    }
+
+    // ---------------- ตั้งค่า ----------------
+    async function loadSettings() {
+      const data = await api({ action: 'get_settings' });
+      if (!data.ok) return;
+      const s = data.settings || {};
+      $('fLat').value = s.warehouse_lat ?? '';
+      $('fLng').value = s.warehouse_lng ?? '';
+      $('fRadius').value = s.radius_m ?? '';
+      $('fStart').value = s.work_start ?? '08:00';
+      $('fEnd').value = s.work_end ?? '17:00';
+    }
+
+    function useHere() {
+      if (!navigator.geolocation) { alert('อุปกรณ์นี้ไม่รองรับ Geolocation'); return; }
+      $('saveMsg').textContent = 'กำลังอ่านตำแหน่ง...';
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          $('fLat').value = pos.coords.latitude.toFixed(6);
+          $('fLng').value = pos.coords.longitude.toFixed(6);
+          $('saveMsg').textContent = 'ใส่พิกัดปัจจุบันแล้ว อย่าลืมกดบันทึก';
+        },
+        (err) => { $('saveMsg').textContent = 'อ่านตำแหน่งไม่สำเร็จ: ' + err.message; },
+        { enableHighAccuracy: true, timeout: 15000 }
+      );
+    }
+
+    async function saveSettings() {
+      $('btnSave').disabled = true;
+      $('saveMsg').textContent = 'กำลังบันทึก...';
+      const data = await api({
+        action: 'update_settings',
+        settings: {
+          warehouse_lat: $('fLat').value,
+          warehouse_lng: $('fLng').value,
+          radius_m: $('fRadius').value,
+          work_start: $('fStart').value,
+          work_end: $('fEnd').value,
+        }
+      });
+      $('btnSave').disabled = false;
+      $('saveMsg').textContent = data.ok ? '✅ ' + data.desc : '❌ ' + (data.desc || 'บันทึกไม่สำเร็จ');
+    }
+
+    start();
+  </script>
+</body>
+</html>

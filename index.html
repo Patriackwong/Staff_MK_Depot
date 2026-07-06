@@ -1,289 +1,166 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MK Time Ticker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      background: #A8E6CF;
+      font-family: 'Prompt', sans-serif;
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+      text-align: center;
+    }
+    .logo { max-width: 120px; border-radius: 16px; margin-bottom: 16px; }
+    h1 { font-size: 20px; font-weight: 600; color: #2E7D32; margin-bottom: 4px; }
+    .hint { font-size: 14px; color: #555; margin: 12px 0 6px; }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 10px rgba(0,0,0,.08);
+      padding: 20px;
+      width: 100%;
+      max-width: 360px;
+      margin-bottom: 8px;
+    }
+    button {
+      border: none;
+      border-radius: 50px;
+      padding: 16px 0;
+      width: 100%;
+      font-size: 20px;
+      font-weight: 600;
+      font-family: inherit;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .6; }
+    .btn-in  { background: #4CAF50; }
+    .btn-out { background: #FF7043; }
+    .warn { color: #D32F2F; font-size: 15px; font-weight: 600; margin: 16px 0; max-width: 360px; }
+    .pdpa { font-size: 13px; color: #555; margin-top: 12px; max-width: 360px; }
+    .pdpa a { color: #2E7D32; }
+    #status {
+      margin-top: 16px;
+      font-size: 14px;
+      color: #666;
+      min-height: 20px;
+      max-width: 360px;
+      white-space: pre-line;
+    }
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.35);
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay.show { display: flex; }
+    .overlay .box {
+      background: #fff;
+      border-radius: 20px;
+      padding: 28px 36px;
+      font-size: 17px;
+      color: #2E7D32;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <img class="logo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTytwug670ZT-11TYlXrUSICFqRsBv5_WCqmQ&s" alt="Logo">
 
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
-    <!-- Google Fonts (Poppins and Roboto) -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <h1>บันทึกเวลาการทำงานของพนักงานประจำคลังแม่กลอง</h1>
 
-    <style>
-      body {
-        background-color: #A8E6CF;
-        font-family: 'Poppins', sans-serif;
-        color: #333;
+  <p class="hint">กดปุ่มด้านล่าง เพื่อบันทึกการลงเข้า</p>
+  <div class="card">
+    <button class="btn-in" id="btnIn" onclick="record('in')">Check-In</button>
+  </div>
+
+  <p class="hint">กดปุ่ม เพื่อบันทึกเวลาออก</p>
+  <div class="card">
+    <button class="btn-out" id="btnOut" onclick="record('out')">Check-Out</button>
+  </div>
+
+  <p class="warn">เมื่อเลิกงานแล้วอย่าลืม Check-Out เพื่อสิทธิประโยชน์ของผู้ทำงานเอง</p>
+
+  <div class="pdpa">
+    <label><input type="checkbox" id="pdpaConsent" checked> ฉันขออนุญาตให้เก็บข้อมูลตามข้อกำหนด PDPA</label><br>
+    <a href="https://patriackwong.github.io/PTGMKDEPOTPDPA/" target="_blank">รายละเอียดนโยบายความเป็นส่วนตัว (Privacy Notice)</a>
+  </div>
+
+  <p id="status"></p>
+
+  <div class="overlay" id="loading"><div class="box">กำลังบันทึกข้อมูล โปรดรอสักครู่...</div></div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
+  <script>
+    // ===================== ตั้งค่า =====================
+    const LIFF_ID  = '2008171590-o7DbGdZQ';   // LIFF เดิม ใช้ต่อได้เลย
+    const FUNC_URL = 'https://YOUR-PROJECT-REF.supabase.co/functions/v1/attendance'; // 🔧 แก้เป็น URL โปรเจกต์ของคุณ
+    // ===================================================
+
+    const statusEl = document.getElementById('status');
+    const loading  = document.getElementById('loading');
+
+    liff.init({ liffId: LIFF_ID })
+      .then(() => {
+        if (!liff.isLoggedIn() && !liff.isInClient()) liff.login();
+      })
+      .catch((err) => { statusEl.textContent = 'LIFF init ล้มเหลว: ' + err.message; });
+
+    function setBusy(b) {
+      loading.classList.toggle('show', b);
+      document.getElementById('btnIn').disabled = b;
+      document.getElementById('btnOut').disabled = b;
+    }
+
+    function record(ctype) {
+      if (!document.getElementById('pdpaConsent').checked) {
+        alert('กรุณายอมรับเงื่อนไข PDPA ก่อน');
+        return;
       }
-
-      h1 {
-        font-weight: 600;
-        color: #4CAF50;
-        margin-top: 30px;
+      if (!navigator.geolocation) {
+        statusEl.textContent = 'อุปกรณ์นี้ไม่รองรับ Geolocation';
+        return;
       }
+      setBusy(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => send(ctype, pos.coords.latitude, pos.coords.longitude),
+        (err) => {
+          setBusy(false);
+          statusEl.textContent = 'อ่านพิกัดไม่สำเร็จ: ' + err.message + '\nกรุณาเปิดอนุญาต Location แล้วลองใหม่';
+        },
+        { enableHighAccuracy: true, timeout: 15000 }
+      );
+    }
 
-      h2 {
-        font-weight: 400;
-        color: #E91E63;
-      }
+    async function send(ctype, lat, lng) {
+      try {
+        const accessToken = liff.getAccessToken();
+        if (!accessToken) throw new Error('ไม่พบ token กรุณาเปิดผ่าน LINE');
 
-      .btn {
-        border-radius: 50px;
-        padding: 15px 30px;
-        font-size: 18px;
-        font-weight: 500;
-      }
-
-      .btn-success {
-        background-color: #4CAF50;
-        border: none;
-        color: white;
-      }
-
-      .btn-danger {
-        background-color: #FF7043;
-        border: none;
-        color: white;
-      }
-
-      .modal-content {
-        background-color: #ffffff;
-        border-radius: 20px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      }
-
-      .modal-body {
-        font-size: 18px;
-        color: #555;
-        text-align: center;
-      }
-
-      .modal-title {
-        font-weight: 600;
-        color: #4CAF50;
-      }
-
-      #demo {
-        margin-top: 20px;
-        font-size: 16px;
-        color: #888;
-      }
-
-      .footer {
-        position: fixed;
-        bottom: 0;
-        width: 100%;
-        padding: 10px;
-        text-align: center;
-        font-size: 14px;
-        background-color: #4CAF50;
-        color: white;
-      }
-
-      .card {
-        border-radius: 10px;
-        padding: 20px;
-        background-color: #ffffff;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        margin: 10px;
-      }
-
-      .logo {
-        max-width: 150px;
-        margin-bottom: 20px;
-      }
-
-      .pdpa-section {
-        margin-top: 20px;
-      }
-    </style>
-
-    <title>MK Time Ticker</title>
-  </head>
-  <body>
-    <div class="container text-center">
-      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTytwug670ZT-11TYlXrUSICFqRsBv5_WCqmQ&s" alt="Logo" class="logo">
-
-      <h1>บันทึกเวลาการทำงานของพนักงานประจำคลังแม่กลอง</h1>
-      <p>กดปุ่มด้านล่าง เพื่อบันทึกการลงเข้า </p>
-
-      <div id="cin" class="visible card">
-        <button type="button" class="btn btn-success" onclick="getLocation()">Check-In</button>
-      </div>
-
-      <p>กดปุ่ม เพื่อบันทึกเวลาออก </p>
-      <div id="cout" class="visible card">
-        <button type="button" class="btn btn-danger" onclick="getLocationOut()">Check-Out</button>
-      </div>
-
-      <h2><font color="red">เมื่อเลิกงานแล้วอย่าลืม Check-Out เพื่อสิทธิประโยชน์ของผู้ทำงานเอง</font></h2>
-      <p id="demo"></p>
-
-      <!-- PDPA Section -->
- <div class="pdpa-section">
-  <input type="checkbox" id="pdpaConsent" checked /> 
-  <label for="pdpaConsent">ฉันขออนุญาตให้เก็บข้อมูลตามข้อกำหนด PDPA</label>
-  <br>
-  <a href="https://patriackwong.github.io/PTGMKDEPOTPDPA/" target="_blank">รายละเอียดนโยบายความเป็นส่วนตัว (Privacy Notice)</a>
-</div>
-
-
-      <!-- Modal for loading status -->
-      <div class="modal" tabindex="-1" role="dialog" id="loadingModal">
-        <div class="modal-dialog" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">กำลังบันทึกข้อมูล</h5>
-            </div>
-            <div class="modal-body">
-              <p>โปรดรอสักครู่...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <script>
-      window.onload = function() {
-        initializeLiff('2008171590-o7DbGdZQ');
-      }
-
-      const xurl = "https://script.google.com/macros/s/AKfycbylWBgIXvvRKdt1Y1VUihE7B8gUSyfS7pFQd8RY419N9jRYyvdKXB98Cux8AXNgnd6P/exec";
-
-      function initializeLiff(myLiffId) {
-        liff
-          .init({
-            liffId: myLiffId
-          })
-          .then(() => {
-            console.log('LIFF Initialized successfully');
-          })
-          .catch((err) => {
-            console.error('LIFF Initialization failed', err);
-          });
-      }
-
-      var x = document.getElementById("demo");
-
-      function showLoading() {
-        $('#loadingModal').modal({
-          backdrop: 'static',
-          keyboard: false
+        const res = await fetch(FUNC_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ctype, accessToken, lat, lng, os: liff.getOS() })
         });
-        $('#loadingModal').modal('show');
+        const data = await res.json();
+        setBusy(false);
+        alert(data.desc);
+        if (data.ok && liff.isInClient()) liff.closeWindow();
+      } catch (err) {
+        setBusy(false);
+        statusEl.textContent = 'เกิดข้อผิดพลาด: ' + err.message;
       }
-
-      function hideLoading() {
-        $('#loadingModal').modal('hide');
-      }
-
-      function getLocation() {
-        if (document.getElementById('pdpaConsent').checked) {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(showPosition, handleError);
-          } else {
-            x.innerHTML = "Geolocation is not supported by this browser.";
-          }
-        } else {
-          alert("กรุณายอมรับเงื่อนไข PDPA ก่อน");
-        }
-      }
-
-      function showPosition(position) {
-        showLoading();
-
-        liff.getProfile().then(function(profile) {
-          var uid = profile.userId;
-          var uname = profile.displayName;
-          var xos = liff.getOS();
-          x.innerHTML = "Lat: " + position.coords.latitude +
-            "<br>Long: " + position.coords.longitude +
-            "<br>userId: " + uid +
-            "<br>displayName: " + uname +
-            "<br>your OS: " + xos;
-
-          var xmlhttp = new XMLHttpRequest();
-          var theUrl = xurl + "?ctype=In&xos=" + xos + "&user=" + uid + "&name=" + uname + "&lat=" + position.coords.latitude + "&long=" + position.coords.longitude;
-          xmlhttp.open('GET', theUrl);
-          xmlhttp.send();
-
-          xmlhttp.onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-              var jsonResponse = JSON.parse(this.responseText);
-              alert(jsonResponse.desc);
-
-              hideLoading();
-              liff.closeWindow();
-            } else if (this.readyState == 4) {
-              alert('Error: ' + this.status + ' - ' + this.statusText);
-              hideLoading();
-            }
-          };
-        }).catch((err) => {
-          console.error("Error fetching LIFF profile:", err);
-          hideLoading();
-        });
-      }
-
-      function handleError(error) {
-        console.error("Error fetching geolocation:", error);
-        x.innerHTML = "Error: " + error.message;
-        hideLoading();
-      }
-
-      function getLocationOut() {
-        if (document.getElementById('pdpaConsent').checked) {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(showPositionOut, handleError);
-          } else {
-            x.innerHTML = "Geolocation is not supported by this browser.";
-          }
-        } else {
-          alert("กรุณายอมรับเงื่อนไข PDPA ก่อน");
-        }
-      }
-
-      function showPositionOut(position) {
-        showLoading();
-
-        liff.getProfile().then(function(profile) {
-          var uid = profile.userId;
-          var uname = profile.displayName;
-          var xos = liff.getOS();
-          x.innerHTML = "Lat: " + position.coords.latitude +
-            "<br>Long: " + position.coords.longitude +
-            "<br>userId: " + uid +
-            "<br>displayName: " + uname +
-            "<br>your OS: " + xos;
-
-          var xmlhttp = new XMLHttpRequest();
-          var theUrl = xurl + "?ctype=Out&xos=" + xos + "&user=" + uid + "&name=" + uname + "&lat=" + position.coords.latitude + "&long=" + position.coords.longitude;
-          xmlhttp.open('GET', theUrl);
-          xmlhttp.send();
-
-          xmlhttp.onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-              var jsonResponse = JSON.parse(this.responseText);
-              alert(jsonResponse.desc);
-
-              hideLoading();
-              liff.closeWindow();
-            } else if (this.readyState == 4) {
-              alert('Error: ' + this.status + ' - ' + this.statusText);
-              hideLoading();
-            }
-          };
-        }).catch((err) => {
-          console.error("Error fetching LIFF profile:", err);
-          hideLoading();
-        });
-      }
-    </script>
-
-    <!-- Optional JavaScript -->
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" crossorigin="anonymous"></script>
-  </body>
+    }
+  </script>
+</body>
 </html>
