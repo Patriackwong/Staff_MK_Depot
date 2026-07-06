@@ -9,10 +9,8 @@
     * { box-sizing: border-box; margin: 0; }
     body {
       font-family: 'Prompt', sans-serif;
-      background: #F4FBF6;
-      color: #263238;
-      min-height: 100vh;
-      padding: 24px 16px 48px;
+      background: #F4FBF6; color: #263238;
+      min-height: 100vh; padding: 24px 16px 48px;
     }
     .wrap { max-width: 640px; margin: 0 auto; }
     header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
@@ -21,9 +19,12 @@
       font-size: 12px; font-weight: 600; color: #2E7D32;
       display: inline-flex; align-items: center; gap: 6px;
     }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #4CAF50; animation: pulse 1.6s infinite; }
-    @keyframes pulse { 50% { opacity: .3; } }
     .admin-name { font-size: 12px; color: #78909C; width: 100%; }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot.on  { background: #4CAF50; animation: pulse 1.4s infinite; box-shadow: 0 0 6px rgba(76,175,80,.7); }
+    .dot.off { background: #E53935; }
+    @keyframes pulse { 50% { opacity: .25; } }
 
     .count-card {
       background: #fff; border-radius: 20px; padding: 28px;
@@ -32,43 +33,58 @@
     }
     .count { font-size: 64px; font-weight: 600; color: #2E7D32; line-height: 1.1; }
     .count-label { font-size: 15px; color: #607D8B; }
+    .sub-count { font-size: 13px; color: #90A4AE; margin-top: 6px; }
+
+    .section-label { font-size: 13px; font-weight: 600; color: #78909C; margin: 18px 4px 8px; }
 
     ul { list-style: none; }
     li {
-      background: #fff; border-radius: 14px; padding: 14px 18px;
-      margin-bottom: 10px; display: flex; align-items: center; gap: 14px;
+      background: #fff; border-radius: 14px; padding: 14px 16px;
+      margin-bottom: 10px; display: flex; align-items: center; gap: 12px;
       box-shadow: 0 2px 6px rgba(0,0,0,.05);
     }
+    li.done { opacity: .82; }
     .avatar {
       width: 42px; height: 42px; border-radius: 50%;
       background: #C8E6C9; color: #2E7D32;
       display: flex; align-items: center; justify-content: center;
       font-weight: 600; font-size: 18px; flex-shrink: 0;
     }
+    li.done .avatar { background: #FFCDD2; color: #C62828; }
     .info { flex: 1; min-width: 0; }
-    .name { font-weight: 600; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .name {
+      font-weight: 600; font-size: 16px;
+      display: flex; align-items: center; gap: 8px;
+      overflow: hidden;
+    }
+    .name span.txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .code { font-weight: 300; color: #90A4AE; font-size: 13px; }
     .since { font-size: 13px; color: #78909C; }
-    .dur { font-size: 14px; font-weight: 600; color: #2E7D32; white-space: nowrap; }
+    .dur { font-size: 14px; font-weight: 600; color: #2E7D32; white-space: nowrap; text-align: right; }
     .dur.long { color: #E65100; }
+    li.done .dur { color: #78909C; font-weight: 400; }
+    .st { font-size: 11px; font-weight: 600; }
+    .st.on { color: #2E7D32; }
+    .st.off { color: #C62828; }
     li.overdue { border: 1px solid #FFCC80; background: #FFF8F0; }
     .badge {
       font-size: 11px; font-weight: 600; color: #E65100;
-      background: #FFE0B2; border-radius: 8px; padding: 2px 8px; margin-left: 6px;
+      background: #FFE0B2; border-radius: 8px; padding: 2px 8px;
     }
     .empty, .panel {
-      text-align: center; color: #607D8B; padding: 32px 20px; font-size: 15px;
-      background: #fff; border-radius: 14px; margin-top: 20px;
+      text-align: center; color: #607D8B; padding: 28px 20px; font-size: 15px;
+      background: #fff; border-radius: 14px;
     }
+    .panel { margin-top: 20px; }
     .panel h2 { font-size: 17px; color: #D32F2F; margin-bottom: 8px; font-weight: 600; }
     .uid {
       display: inline-block; margin-top: 10px; padding: 8px 12px;
       background: #ECEFF1; border-radius: 8px;
-      font-family: monospace; font-size: 13px; word-break: break-all;
-      user-select: all;
+      font-family: monospace; font-size: 13px; word-break: break-all; user-select: all;
     }
     .panel small { display: block; margin-top: 10px; color: #90A4AE; }
     footer { margin-top: 20px; font-size: 12px; color: #90A4AE; text-align: center; }
+    footer a { color: #2E7D32; }
     .hidden { display: none; }
   </style>
 </head>
@@ -76,7 +92,7 @@
   <div class="wrap">
     <header>
       <h1>คลังแม่กลอง — อยู่ในคลังตอนนี้</h1>
-      <span class="live"><span class="dot"></span>อัปเดตอัตโนมัติ</span>
+      <span class="live"><span class="dot on"></span>อัปเดตอัตโนมัติ</span>
       <span class="admin-name" id="adminName"></span>
     </header>
 
@@ -92,10 +108,18 @@
     <div id="main" class="hidden">
       <div class="count-card">
         <div class="count" id="count">–</div>
-        <div class="count-label">คนที่เช็คอินแล้วยังไม่เช็คเอาท์</div>
+        <div class="count-label">คนที่ทำงานอยู่ภายในคลัง</div>
+        <div class="sub-count" id="subCount"></div>
       </div>
-      <ul id="list"></ul>
+
+      <div class="section-label hidden" id="lblWorking">🟢 กำลังทำงาน</div>
+      <ul id="listWorking"></ul>
+
+      <div class="section-label hidden" id="lblDone">🔴 เลิกงานแล้ววันนี้</div>
+      <ul id="listDone"></ul>
+
       <footer id="updated"></footer>
+      <footer><a href="admin.html">ดูรายงานสรุปรายเดือน</a></footer>
     </div>
   </div>
 
@@ -104,20 +128,23 @@
     // ===================== ตั้งค่า =====================
     const LIFF_ID  = '2008171590-nxiAEuIA'; // 🔧 LIFF ตัวใหม่สำหรับ dashboard (สร้างใน channel เดิม)
     const FUNC_URL = 'https://mwvnomvwsfhckspnfjhe.supabase.co/functions/v1/dashboard'; // 🔧 แก้เป็นของคุณ
-    const REFRESH_SECONDS = 20;   // ดึงข้อมูลใหม่ทุกกี่วินาที
-    const OVERDUE_HOURS   = 14;   // เกินกี่ชั่วโมงถือว่า "อาจลืมเช็คเอาท์"
+    const REFRESH_SECONDS = 20;
+    const OVERDUE_HOURS   = 14;
     // ===================================================
 
     const $ = (id) => document.getElementById(id);
     let rows = [];
     let timer = null;
 
-    const fmtTime = (iso) => new Date(iso).toLocaleString('th-TH', {
+    const fmtT = (iso) => new Date(iso).toLocaleTimeString('th-TH', {
+      timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit'
+    });
+    const fmtDT = (iso) => new Date(iso).toLocaleString('th-TH', {
       timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short'
     });
 
-    function durText(iso) {
-      const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    function durText(fromIso, toIso) {
+      const mins = Math.floor(((toIso ? new Date(toIso) : new Date()) - new Date(fromIso)) / 60000);
       const h = Math.floor(mins / 60), m = mins % 60;
       return h > 0 ? `${h} ชม. ${m} น.` : `${m} นาที`;
     }
@@ -131,13 +158,10 @@
     async function start() {
       try {
         await liff.init({ liffId: LIFF_ID });
-        if (!liff.isLoggedIn()) {
-          liff.login({ redirectUri: location.href });
-          return;
-        }
+        if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
         await load();
         timer = setInterval(load, REFRESH_SECONDS * 1000);
-        setInterval(render, 60000); // ให้ตัวเลขระยะเวลาเดินทุกนาที
+        setInterval(render, 60000);
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible') load();
         });
@@ -151,9 +175,12 @@
         const res = await fetch(FUNC_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accessToken: liff.getAccessToken() })
+          body: JSON.stringify({ action: 'live', accessToken: liff.getAccessToken() })
         });
-        const data = await res.json();
+        const raw = await res.text();
+        let data;
+        try { data = JSON.parse(raw); }
+        catch { throw new Error('เซิร์ฟเวอร์ตอบผิดรูปแบบ (HTTP ' + res.status + '): ' + raw.slice(0, 120)); }
 
         if (!data.ok) {
           if (timer) clearInterval(timer);
@@ -176,35 +203,62 @@
         $('main').classList.remove('hidden');
         render();
       } catch (err) {
-        $('updated').textContent = 'โหลดข้อมูลไม่สำเร็จ จะลองใหม่อัตโนมัติ';
+        $('updated').textContent = err.message + ' — จะลองใหม่อัตโนมัติ';
       }
+    }
+
+    function personLi(r, working) {
+      const e = r.employees || {};
+      const name = e.full_name || e.display_name || r.line_user_id;
+      const hrs = (Date.now() - new Date(r.check_in).getTime()) / 3600000;
+      const overdue = working && hrs >= OVERDUE_HOURS;
+
+      const li = document.createElement('li');
+      li.className = (working ? '' : 'done') + (overdue ? ' overdue' : '');
+      li.innerHTML = `
+        <div class="avatar">${escapeHtml(name.trim().charAt(0))}</div>
+        <div class="info">
+          <div class="name">
+            <span class="dot ${working ? 'on' : 'off'}"></span>
+            <span class="txt">${escapeHtml(name)}</span>
+            ${e.employee_code ? `<span class="code">(${escapeHtml(e.employee_code)})</span>` : ''}
+            ${overdue ? '<span class="badge">อาจลืมเช็คเอาท์</span>' : ''}
+            ${r.remark ? `<span class="badge">${escapeHtml(r.remark)}</span>` : ''}
+          </div>
+          <div class="since">${working
+            ? 'เข้างาน ' + fmtDT(r.check_in)
+            : 'เข้า ' + fmtT(r.check_in) + ' – ออก ' + fmtT(r.check_out)}</div>
+        </div>
+        <div class="dur ${overdue ? 'long' : ''}">
+          <div class="st ${working ? 'on' : 'off'}">${working ? 'กำลังทำงาน' : 'เลิกงานแล้ว'}</div>
+          ${durText(r.check_in, r.check_out)}
+        </div>`;
+      return li;
     }
 
     function render() {
       if ($('main').classList.contains('hidden')) return;
-      $('count').textContent = rows.length;
-      const list = $('list');
-      list.innerHTML = '';
-      if (rows.length === 0) {
-        list.innerHTML = '<li class="empty">ไม่มีพนักงานอยู่ในคลังขณะนี้</li>';
+
+      const working = rows.filter(r => !r.check_out)
+        .sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
+      const done = rows.filter(r => r.check_out)
+        .sort((a, b) => new Date(b.check_out) - new Date(a.check_out));
+
+      $('count').textContent = working.length;
+      $('subCount').textContent = done.length ? `เลิกงานไปแล้ววันนี้ ${done.length} คน` : '';
+
+      const lw = $('listWorking'), ld = $('listDone');
+      lw.innerHTML = ''; ld.innerHTML = '';
+
+      $('lblWorking').classList.toggle('hidden', working.length === 0);
+      $('lblDone').classList.toggle('hidden', done.length === 0);
+
+      if (working.length === 0 && done.length === 0) {
+        lw.innerHTML = '<li class="empty">ยังไม่มีพนักงานเช็คอินวันนี้</li>';
       }
-      for (const r of rows) {
-        const hrs = (Date.now() - new Date(r.check_in).getTime()) / 3600000;
-        const overdue = hrs >= OVERDUE_HOURS;
-        const li = document.createElement('li');
-        if (overdue) li.className = 'overdue';
-        const name = r.display_name || r.line_user_id;
-        li.innerHTML = `
-          <div class="avatar">${escapeHtml(name.trim().charAt(0))}</div>
-          <div class="info">
-            <div class="name">${escapeHtml(name)}
-              ${r.employee_code ? `<span class="code">(${escapeHtml(r.employee_code)})</span>` : ''}
-              ${overdue ? '<span class="badge">อาจลืมเช็คเอาท์</span>' : ''}</div>
-            <div class="since">เข้างาน ${fmtTime(r.check_in)}</div>
-          </div>
-          <div class="dur ${overdue ? 'long' : ''}">${durText(r.check_in)}</div>`;
-        list.appendChild(li);
-      }
+      for (const r of working) lw.appendChild(personLi(r, true));
+      for (const r of done)    ld.appendChild(personLi(r, false));
+
       $('updated').textContent = 'อัปเดตล่าสุด ' +
         new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' });
     }
