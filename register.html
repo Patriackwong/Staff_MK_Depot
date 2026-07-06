@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ลงทะเบียนพนักงาน — คลังแม่กลอง</title>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      background: #A8E6CF;
+      font-family: 'Prompt', sans-serif; color: #333;
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; padding: 24px 16px 48px; text-align: center;
+    }
+    .logo { max-width: 100px; border-radius: 16px; margin-bottom: 12px; }
+    h1 { font-size: 19px; font-weight: 600; color: #2E7D32; margin-bottom: 14px; }
+    .card {
+      background: #fff; border-radius: 16px;
+      box-shadow: 0 4px 10px rgba(0,0,0,.08);
+      padding: 20px; width: 100%; max-width: 380px; text-align: left;
+    }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 13px; color: #546E7A; margin-bottom: 4px; }
+    .field input, .field select {
+      width: 100%; font-family: inherit; font-size: 16px;
+      padding: 10px 12px; border: 1px solid #C8E6C9; border-radius: 10px;
+      background: #fff;
+    }
+    .row2 { display: flex; gap: 10px; }
+    .row2 .field { flex: 1; }
+    button {
+      border: none; border-radius: 50px; padding: 15px 0; width: 100%;
+      font-size: 18px; font-weight: 600; font-family: inherit;
+      color: #fff; background: #4CAF50; cursor: pointer; margin-top: 4px;
+    }
+    button:disabled { opacity: .6; }
+    .pdpa { font-size: 13px; color: #555; margin-top: 12px; }
+    .pdpa a { color: #2E7D32; }
+    #status { margin-top: 14px; font-size: 14px; color: #666; min-height: 20px; white-space: pre-line; }
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.35); align-items: center; justify-content: center;
+    }
+    .overlay.show { display: flex; }
+    .overlay .box {
+      background: #fff; border-radius: 20px; padding: 28px 36px;
+      font-size: 17px; color: #2E7D32; font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <img class="logo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTytwug670ZT-11TYlXrUSICFqRsBv5_WCqmQ&s" alt="Logo">
+  <h1>ลงทะเบียนพนักงานคลังแม่กลอง</h1>
+
+  <div class="card">
+    <div class="field">
+      <label>รหัสพนักงาน</label>
+      <input type="text" id="fCode" inputmode="text" autocomplete="off" placeholder="เช่น 176500">
+    </div>
+    <div class="field">
+      <label>คำนำหน้า</label>
+      <select id="fTitle">
+        <option value="นาย">นาย</option>
+        <option value="นาง">นาง</option>
+        <option value="นางสาว">นางสาว</option>
+      </select>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>ชื่อ</label>
+        <input type="text" id="fFirst" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>นามสกุล</label>
+        <input type="text" id="fLast" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="pdpa" style="margin:0 0 12px">
+      <label><input type="checkbox" id="pdpaConsent" checked> ฉันขออนุญาตให้เก็บข้อมูลตามข้อกำหนด PDPA</label><br>
+      <a href="https://patriackwong.github.io/PTGMKDEPOTPDPA/" target="_blank">รายละเอียดนโยบายความเป็นส่วนตัว</a>
+    </div>
+
+    <button id="btnReg" onclick="register()">ลงทะเบียน</button>
+  </div>
+
+  <p id="status"></p>
+  <div class="overlay" id="loading"><div class="box">กำลังบันทึกข้อมูล โปรดรอสักครู่...</div></div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
+  <script>
+    // ===================== ตั้งค่า =====================
+    const LIFF_ID  = '2008171590-pXYyDOak';  // LIFF ลงทะเบียนตัวเดิม
+    const FUNC_URL = 'https://mwvnomvwsfhckspnfjhe.supabase.co/functions/v1/attendance'; // 🔧 URL เดียวกับหน้า check-in
+    // ===================================================
+
+    const statusEl = document.getElementById('status');
+    const loading = document.getElementById('loading');
+
+    liff.init({ liffId: LIFF_ID })
+      .then(() => {
+        if (!liff.isLoggedIn() && !liff.isInClient()) liff.login();
+      })
+      .catch((err) => { statusEl.textContent = 'LIFF init ล้มเหลว: ' + err.message; });
+
+    function setBusy(b) {
+      loading.classList.toggle('show', b);
+      document.getElementById('btnReg').disabled = b;
+    }
+
+    async function register() {
+      const code = document.getElementById('fCode').value.trim();
+      const title = document.getElementById('fTitle').value;
+      const firstName = document.getElementById('fFirst').value.trim();
+      const lastName = document.getElementById('fLast').value.trim();
+
+      if (!document.getElementById('pdpaConsent').checked) {
+        alert('กรุณายอมรับเงื่อนไข PDPA ก่อน'); return;
+      }
+      if (!code || !firstName || !lastName) {
+        alert('กรุณากรอกรหัสพนักงาน ชื่อ และนามสกุลให้ครบ'); return;
+      }
+
+      setBusy(true);
+      try {
+        const accessToken = liff.getAccessToken();
+        if (!accessToken) throw new Error('ไม่พบ token กรุณาเปิดผ่าน LINE');
+
+        const res = await fetch(FUNC_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ctype: 'register', accessToken, code, title, firstName, lastName })
+        });
+        const raw = await res.text();
+        let data;
+        try { data = JSON.parse(raw); }
+        catch { throw new Error('เซิร์ฟเวอร์ตอบผิดรูปแบบ (HTTP ' + res.status + '): ' + raw.slice(0, 120)); }
+
+        setBusy(false);
+        alert(data.desc);
+        if (data.ok && liff.isInClient()) liff.closeWindow();
+      } catch (err) {
+        setBusy(false);
+        statusEl.textContent = 'เกิดข้อผิดพลาด: ' + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
