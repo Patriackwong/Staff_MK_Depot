@@ -65,6 +65,25 @@
     .flag { font-size: 11px; color: #E65100; }
 
     .daylist { padding: 0 16px 12px 62px; font-size: 13px; }
+    /* ปฏิทินรายคน */
+    .calrow {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; border-bottom: 1px solid #F1F8F2;
+    }
+    .calrow:last-child { border-bottom: none; }
+    .calrow.off { background: #FAFAFA; }
+    .cal-date { width: 96px; flex-shrink: 0; font-size: 14px; }
+    .cal-date .dnum { font-weight: 600; }
+    .cal-date .dow { font-size: 11px; color: #B0BEC5; }
+    .cal-date.weekend .dow { color: #EF9A9A; }
+    .cal-body { flex: 1; min-width: 0; font-size: 14px; }
+    .cal-body .times { color: #263238; }
+    .cal-body .rest { color: #B0BEC5; }
+    .cal-hrs { font-weight: 600; color: #2E7D32; font-size: 14px; white-space: nowrap; }
+    .cal-rmk {
+      font-size: 11px; font-weight: 600; color: #E65100;
+      background: #FFE0B2; border-radius: 8px; padding: 1px 8px; margin-left: 6px;
+    }
     .dayrow {
       display: flex; gap: 10px; padding: 5px 0;
       border-top: 1px dashed #ECEFF1; flex-wrap: wrap;
@@ -107,6 +126,25 @@
     .hidden { display: none; }
     footer { margin-top: 18px; font-size: 12px; color: #90A4AE; text-align: center; }
     footer a { color: #2E7D32; }
+    /* modal ส่งอีเมล */
+    .overlay {
+      display: none; position: fixed; inset: 0; z-index: 50;
+      background: rgba(0,0,0,.4); align-items: center; justify-content: center; padding: 20px;
+    }
+    .overlay.show { display: flex; }
+    .modal {
+      background: #fff; border-radius: 18px; padding: 24px;
+      width: 100%; max-width: 380px; box-shadow: 0 10px 30px rgba(0,0,0,.2);
+    }
+    .modal h3 { font-size: 18px; color: #2E7D32; font-weight: 600; margin-bottom: 4px; }
+    .modal-sub { font-size: 13px; color: #78909C; margin-bottom: 16px; }
+    .modal input {
+      width: 100%; font-family: inherit; font-size: 16px;
+      padding: 12px 14px; border: 1px solid #C8E6C9; border-radius: 10px;
+    }
+    .modal-msg { font-size: 13px; margin-top: 10px; min-height: 18px; white-space: pre-line; }
+    .modal-btns { display: flex; gap: 10px; margin-top: 18px; }
+    .modal-btns .btn { flex: 1; padding: 12px 0; }
   </style>
 </head>
 <body>
@@ -125,6 +163,7 @@
     <div id="main" class="hidden">
       <div class="tabs">
         <button class="tab active" id="tabReport" onclick="showTab('report')">รายงาน</button>
+        <button class="tab" id="tabPerson" onclick="showTab('person')">รายคน</button>
         <button class="tab" id="tabSettings" onclick="showTab('settings')">ตั้งค่า</button>
       </div>
 
@@ -134,6 +173,7 @@
           <label for="month" style="font-size:14px;color:#546E7A">เดือน</label>
           <input type="month" id="month">
           <button class="btn ghost" onclick="loadReport()">ดูรายงาน</button>
+          <button class="btn" onclick="openExport()" style="padding:8px 20px;font-size:15px">📧 ส่ง Excel เข้าเมล</button>
         </div>
 
         <div class="stat-row">
@@ -147,6 +187,29 @@
           เรียงตามจำนวนวันที่มาทำงาน · แตะชื่อเพื่อดูรายวัน ·
           วันที่ไม่มีข้อมูล = วันหยุด · <a href="dashboard.html">ดูคนในคลังตอนนี้</a>
         </footer>
+      </div>
+
+      <!-- ==================== รายคน ==================== -->
+      <div id="secPerson" class="hidden">
+        <div class="toolbar">
+          <select id="pEmp" style="flex:1;min-width:180px;font-family:inherit;font-size:15px;padding:8px 12px;border:1px solid #C8E6C9;border-radius:10px;background:#fff">
+            <option value="">— เลือกพนักงาน —</option>
+          </select>
+          <input type="month" id="pMonth">
+          <button class="btn ghost" onclick="loadPerson()">ดู</button>
+        </div>
+
+        <div id="pEmpty" class="panel">เลือกพนักงานและเดือนเพื่อดูสรุปรายวัน</div>
+
+        <div id="pResult" class="hidden">
+          <div class="stat-row">
+            <div class="stat"><div class="v" id="pDays">–</div><div class="l">วันที่มาทำงาน</div></div>
+            <div class="stat"><div class="v" id="pHours">–</div><div class="l">ชั่วโมงรวมทั้งเดือน</div></div>
+            <div class="stat"><div class="v" id="pAvg">–</div><div class="l">เฉลี่ยต่อวัน (ชม.)</div></div>
+          </div>
+          <div class="card" id="pCalendar"></div>
+          <footer>วันที่ไม่มีข้อมูล = วันหยุด/ไม่มาทำงาน</footer>
+        </div>
       </div>
 
       <!-- ==================== ตั้งค่า ==================== -->
@@ -190,11 +253,26 @@
     </div>
   </div>
 
+  <!-- Modal ส่งอีเมล -->
+  <div class="overlay" id="exportModal">
+    <div class="modal">
+      <h3>ส่งรายงาน Excel เข้าอีเมล</h3>
+      <p class="modal-sub" id="exportMonthLabel"></p>
+      <input type="email" id="exportEmail" placeholder="กรอกอีเมลผู้รับ เช่น boss@company.com" autocomplete="email">
+      <div class="modal-msg" id="exportMsg"></div>
+      <div class="modal-btns">
+        <button class="btn ghost" onclick="closeExport()">ยกเลิก</button>
+        <button class="btn" id="exportSend" onclick="sendExport()">ส่ง</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
   <script>
     // ===================== ตั้งค่า =====================
     const LIFF_ID  = '2008171590-vP3AU7WP'; // 🔧 LIFF สำหรับหน้า admin (สร้างใน channel เดิม)
     const FUNC_URL = 'https://mwvnomvwsfhckspnfjhe.supabase.co/functions/v1/dashboard'; // 🔧 แก้เป็นของคุณ
+    const EXPORT_URL = FUNC_URL.replace(/\/dashboard$/, '/export_email'); // อัตโนมัติจาก FUNC_URL
     // ===================================================
 
     const $ = (id) => document.getElementById(id);
@@ -214,8 +292,10 @@
 
     function showTab(t) {
       $('tabReport').classList.toggle('active', t === 'report');
+      $('tabPerson').classList.toggle('active', t === 'person');
       $('tabSettings').classList.toggle('active', t === 'settings');
       $('secReport').classList.toggle('hidden', t !== 'report');
+      $('secPerson').classList.toggle('hidden', t !== 'person');
       $('secSettings').classList.toggle('hidden', t !== 'settings');
     }
 
@@ -225,10 +305,12 @@
         if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
 
         const now = new Date();
-        $('month').value = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }).slice(0, 7);
+        const ym = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }).slice(0, 7);
+        $('month').value = ym;
+        $('pMonth').value = ym;
 
         const ok = await loadReport();       // โหลดรายงาน = ตรวจสิทธิ์ไปในตัว
-        if (ok) loadSettings();
+        if (ok) { loadSettings(); loadEmployees(); }
       } catch (err) {
         $('loadingPanel').textContent = 'เริ่มระบบไม่สำเร็จ: ' + err.message;
       }
@@ -341,6 +423,94 @@
       });
     }
 
+    // ---------------- รายคน ----------------
+    async function loadEmployees() {
+      const data = await api({ action: 'employees' });
+      if (!data.ok) return;
+      const sel = $('pEmp');
+      for (const e of data.employees || []) {
+        const opt = document.createElement('option');
+        opt.value = e.id;
+        opt.textContent = (e.code ? e.code + ' — ' : '') + e.name + (e.active ? '' : ' (พ้นสภาพ)');
+        sel.appendChild(opt);
+      }
+    }
+
+    async function loadPerson() {
+      const uid = $('pEmp').value;
+      const m = $('pMonth').value;
+      if (!uid) { alert('กรุณาเลือกพนักงาน'); return; }
+      if (!m) { alert('กรุณาเลือกเดือน'); return; }
+
+      const [y, mo] = m.split('-').map(Number);
+      const from = `${m}-01`;
+      const lastDay = new Date(y, mo, 0).getDate();
+      const to = `${m}-${String(lastDay).padStart(2, '0')}`;
+
+      const data = await api({ action: 'report', from, to });
+      if (!data.ok) { alert(data.desc || 'โหลดข้อมูลไม่สำเร็จ'); return; }
+
+      // รวมข้อมูลของคนที่เลือก จัดกลุ่มตามวัน (เผื่อกรณีมีหลายแถวในวันเดียว)
+      const byDate = new Map();
+      for (const r of (data.rows || [])) {
+        if (r.line_user_id !== uid) continue;
+        const d = bkkDate(r.check_in);
+        if (!byDate.has(d)) byDate.set(d, { in: r.check_in, out: r.check_out, remark: r.remark });
+        const cur = byDate.get(d);
+        if (new Date(r.check_in) < new Date(cur.in)) cur.in = r.check_in;
+        if (r.check_out && (!cur.out || new Date(r.check_out) > new Date(cur.out))) cur.out = r.check_out;
+        if (r.remark) cur.remark = r.remark;
+      }
+
+      renderPerson(y, mo, lastDay, byDate);
+    }
+
+    function renderPerson(y, mo, lastDay, byDate) {
+      $('pEmpty').classList.add('hidden');
+      $('pResult').classList.remove('hidden');
+
+      let totalHours = 0, workDays = 0;
+      const dow = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+      const box = $('pCalendar');
+      box.innerHTML = '';
+
+      for (let day = 1; day <= lastDay; day++) {
+        const dateStr = `${y}-${String(mo).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const jsDate = new Date(`${dateStr}T00:00:00+07:00`);
+        const wd = jsDate.getDay();
+        const rec = byDate.get(dateStr);
+
+        const row = document.createElement('div');
+        row.className = 'calrow' + (rec ? '' : ' off');
+
+        let body, hrsText = '';
+        if (rec) {
+          const hrs = rec.out
+            ? Math.max(0, (new Date(rec.out) - new Date(rec.in)) / 3600000)
+            : 0;
+          totalHours += hrs; workDays++;
+          const outTxt = rec.out ? fmtT(rec.out) : 'ยังไม่เช็คเอาท์';
+          body = `<span class="times">${fmtT(rec.in)} – ${outTxt}</span>` +
+                 (rec.remark ? `<span class="cal-rmk">${esc(rec.remark)}</span>` : '');
+          hrsText = rec.out ? hrs.toFixed(1) + ' ชม.' : '—';
+        } else {
+          body = '<span class="rest">วันหยุด / ไม่มาทำงาน</span>';
+        }
+
+        row.innerHTML = `
+          <div class="cal-date ${wd === 0 || wd === 6 ? 'weekend' : ''}">
+            <span class="dnum">${day}</span> <span class="dow">${dow[wd]}</span>
+          </div>
+          <div class="cal-body">${body}</div>
+          <div class="cal-hrs">${hrsText}</div>`;
+        box.appendChild(row);
+      }
+
+      $('pDays').textContent = workDays;
+      $('pHours').textContent = totalHours.toFixed(1);
+      $('pAvg').textContent = workDays ? (totalHours / workDays).toFixed(1) : '0';
+    }
+
     // ---------------- ตั้งค่า ----------------
     async function loadSettings() {
       const data = await api({ action: 'get_settings' });
@@ -382,6 +552,68 @@
       });
       $('btnSave').disabled = false;
       $('saveMsg').textContent = data.ok ? '✅ ' + data.desc : '❌ ' + (data.desc || 'บันทึกไม่สำเร็จ');
+    }
+
+    // ---------------- ส่ง Excel เข้าเมล ----------------
+    function currentMonthRange() {
+      const m = $('month').value;
+      const [y, mo] = m.split('-').map(Number);
+      const from = `${m}-01`;
+      const to = `${m}-${String(new Date(y, mo, 0).getDate()).padStart(2, '0')}`;
+      const label = new Date(`${from}T00:00:00+07:00`)
+        .toLocaleDateString('th-TH', { month: 'long', year: 'numeric', timeZone: 'Asia/Bangkok' });
+      return { from, to, label };
+    }
+
+    function openExport() {
+      const { label } = currentMonthRange();
+      $('exportMonthLabel').textContent = 'รายงานเดือน ' + label + ' (ชีตสรุปรวม + ชีตแยกรายคน)';
+      $('exportMsg').textContent = '';
+      $('exportEmail').value = '';
+      $('exportModal').classList.add('show');
+    }
+    function closeExport() { $('exportModal').classList.remove('show'); }
+
+    async function sendExport() {
+      const email = $('exportEmail').value.trim();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        $('exportMsg').style.color = '#C62828';
+        $('exportMsg').textContent = 'กรุณากรอกอีเมลให้ถูกต้อง';
+        return;
+      }
+      const { from, to, label } = currentMonthRange();
+      $('exportSend').disabled = true;
+      $('exportMsg').style.color = '#607D8B';
+      $('exportMsg').textContent = 'กำลังสร้างไฟล์และส่งอีเมล... (อาจใช้เวลาสัก 10-20 วินาที)';
+
+      try {
+        const res = await fetch(EXPORT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accessToken: liff.getAccessToken(),
+            email, from, to, monthLabel: label
+          })
+        });
+        const raw = await res.text();
+        let data;
+        try { data = JSON.parse(raw); }
+        catch { throw new Error('เซิร์ฟเวอร์ตอบผิดรูปแบบ (HTTP ' + res.status + '): ' + raw.slice(0, 120)); }
+
+        $('exportSend').disabled = false;
+        if (data.ok) {
+          $('exportMsg').style.color = '#2E7D32';
+          $('exportMsg').textContent = data.desc;
+          setTimeout(closeExport, 3500);
+        } else {
+          $('exportMsg').style.color = '#C62828';
+          $('exportMsg').textContent = data.desc || 'ส่งไม่สำเร็จ';
+        }
+      } catch (err) {
+        $('exportSend').disabled = false;
+        $('exportMsg').style.color = '#C62828';
+        $('exportMsg').textContent = 'เกิดข้อผิดพลาด: ' + err.message;
+      }
     }
 
     start();
