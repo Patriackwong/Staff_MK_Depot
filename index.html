@@ -104,7 +104,7 @@
   <script>
     // ===================== ตั้งค่า =====================
     const LIFF_ID  = '2008171590-o7DbGdZQ';   // LIFF เดิม ใช้ต่อได้เลย
-    const FUNC_URL = 'https://mwvnomvwsfhckspnfjhe.supabase.co/functions/v1/attendance'; // 🔧 แก้เป็น URL โปรเจกต์ของคุณ
+    const FUNC_URL = 'https://YOUR-PROJECT-REF.supabase.co/functions/v1/attendance'; // 🔧 แก้เป็น URL โปรเจกต์ของคุณ
     // ===================================================
 
     const statusEl = document.getElementById('status');
@@ -122,11 +122,35 @@
       document.getElementById('btnOut').disabled = b;
     }
 
+    // ช่วงเวลาที่ถือว่า "เช้าเกินกว่าจะเลิกงาน" — ถ้ากด Check-Out ในช่วงนี้จะถามยืนยันก่อน
+    const EARLY_OUT_START = 7;   // 07:00
+    const EARLY_OUT_END   = 12;  // 12:00 (เที่ยง)
+
     function record(ctype) {
       if (!document.getElementById('pdpaConsent').checked) {
         alert('กรุณายอมรับเงื่อนไข PDPA ก่อน');
         return;
       }
+
+      // กันกด Check-Out ผิดตอนเช้า (เช่นตั้งใจจะเข้างานแต่กดปุ่มขวา)
+      if (ctype === 'out') {
+        const nowBkk = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+        const h = nowBkk.getHours();
+        if (h >= EARLY_OUT_START && h < EARLY_OUT_END) {
+          const hhmm = nowBkk.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+          const ok = confirm(
+            'ยืนยันการเลิกงาน (Check-Out)?\n\n' +
+            'ขณะนี้เวลา ' + hhmm + ' ซึ่งยังเป็นช่วงเช้า\n' +
+            'หากคุณเพิ่งมาถึงและตั้งใจจะ "เข้างาน" กรุณากดยกเลิก แล้วกดปุ่ม Check-In สีเขียวแทน\n\n' +
+            'กด "ตกลง" เฉพาะเมื่อคุณต้องการเลิกงานจริงๆ เท่านั้น'
+          );
+          if (!ok) {
+            statusEl.textContent = 'ยกเลิกการเช็คเอาท์แล้ว — หากต้องการเข้างาน กรุณากดปุ่ม Check-In สีเขียว';
+            return;
+          }
+        }
+      }
+
       if (!navigator.geolocation) {
         statusEl.textContent = 'อุปกรณ์นี้ไม่รองรับ Geolocation';
         return;
@@ -152,7 +176,15 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ctype, accessToken, lat, lng, os: liff.getOS() })
         });
-        const data = await res.json();
+        const raw = await res.text();
+        let data;
+        try {
+          data = JSON.parse(raw);
+        } catch (e) {
+          throw new Error('เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ (HTTP ' + res.status + ')\n' +
+            'คำตอบที่ได้: ' + raw.slice(0, 150) + '\n' +
+            'มักเกิดจาก FUNC_URL หรือชื่อ function ไม่ถูกต้อง');
+        }
         setBusy(false);
         alert(data.desc);
         if (data.ok && liff.isInClient()) liff.closeWindow();
